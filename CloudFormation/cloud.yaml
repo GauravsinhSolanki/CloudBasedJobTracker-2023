@@ -1,0 +1,548 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: CloudFormation Template for Job Tracker Application
+Resources:
+  # DynamoDB Table Creation for Job Applications
+  JobApplicationsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: JobApplications
+      AttributeDefinitions:
+        - AttributeName: applicationId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: applicationId
+          KeyType: HASH
+      BillingMode: PAY_PER_REQUEST
+
+  # DynamoDB Table Creation for User Documents
+  UserDocumentsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: UserDocuments
+      AttributeDefinitions:
+        - AttributeName: documentId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: documentId
+          KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: 5
+        WriteCapacityUnits: 5
+
+  # DynamoDB Table Creation for Notifications
+  NotificationsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: Notifications
+      AttributeDefinitions:
+        - AttributeName: notificationId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: notificationId
+          KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: 5
+        WriteCapacityUnits: 5
+
+  # SNS Topic for Job Application Notifications
+  JobApplicationNotificationsTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: "JobApplicationNotifications"
+
+  # SNS Email Subscription
+  EmailSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      Endpoint: "solankigbs11@gmail.com"
+      Protocol: "email"
+      TopicArn: !Ref JobApplicationNotificationsTopic
+
+  # # S3 Bucket Creation for Document Storage
+  # DocumentStorageBucket:
+  #   Type: AWS::S3::Bucket
+  #   Properties:
+  #     BucketName: jobtracker-document-storage
+
+  # IAM Role for Lambda Execution
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action: "sts:AssumeRole"
+      Policies:
+        - PolicyName: LambdaFullAccessPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "dynamodb:*"
+                  - "sns:*"
+                  - "logs:*"
+                  - "lambda:*"
+                  - "apigateway:*"
+                  - "s3:*"
+                Resource: "*"
+
+  # Lambda Function for Creating Job Applications
+  CreateApplicationFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: createJobApplication
+      Code:
+        S3Bucket: cloudbasedjobtracker-backend1
+        S3Key: createJobApplication.zip
+      Handler: createJobApplication.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Runtime: nodejs16.x
+      Timeout: 30
+      MemorySize: 128
+
+  # Lambda Function for Deleting Job Applications
+  DeleteApplicationFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: deleteJobApplication
+      Code:
+        S3Bucket: cloudbasedjobtracker-backend1
+        S3Key: deleteJobApplication.zip
+      Handler: deleteJobApplication.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Runtime: nodejs16.x
+      Timeout: 30
+      MemorySize: 128
+
+  # Lambda Function for Updating Job Applications
+  UpdateApplicationFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: updateJobApplication
+      Code:
+        S3Bucket: cloudbasedjobtracker-backend1
+        S3Key: updateJobApplication.zip
+      Handler: updateJobApplication.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Runtime: nodejs16.x
+      Timeout: 30
+      MemorySize: 128
+
+  # Lambda Function for Uploading Documents
+  UploadDocumentFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: uploadDocument
+      Code:
+        S3Bucket: cloudbasedjobtracker-backend1
+        S3Key: uploadDocument.zip
+      Handler: uploadDocument.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Runtime: nodejs16.x
+      Timeout: 30
+      MemorySize: 128
+
+  # Lambda Function for Listing Job Applications
+  GetApplicationsFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: getJobApplications
+      Code:
+        S3Bucket: cloudbasedjobtracker-backend1
+        S3Key: getJobApplication.zip
+      Handler: getJobApplication.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Runtime: nodejs16.x
+      Timeout: 30
+      MemorySize: 128
+
+    # Lambda Function for Listing Documents
+  ListDocumentFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: listDocument
+      Code:
+        S3Bucket: cloudbasedjobtracker-backend1
+        S3Key: listDocument.zip
+      Handler: listDocument.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Runtime: nodejs16.x
+      Timeout: 30
+      MemorySize: 128
+
+  # API Gateway for Job Tracker
+  ApplicationApi:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: ApplicationApi
+      Description: "API Gateway for Job Tracker Application"
+
+  # Resource for /applications
+  ApplicationsResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      ParentId: !GetAtt ApplicationApi.RootResourceId
+      PathPart: "applications"
+      RestApiId: !Ref ApplicationApi
+
+  # OPTIONS Method for /applications (CORS Configuration)
+  ApplicationsOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      HttpMethod: OPTIONS
+      ResourceId: !Ref ApplicationsResource
+      RestApiId: !Ref ApplicationApi
+      Integration:
+        Type: MOCK
+        IntegrationResponses:
+          - StatusCode: 200
+            ResponseParameters:
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+              method.response.header.Access-Control-Allow-Methods: "'POST,GET,OPTIONS'"
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+            ResponseTemplates:
+              application/json: ""
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        PassthroughBehavior: WHEN_NO_MATCH
+      MethodResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: true
+            method.response.header.Access-Control-Allow-Methods: true
+            method.response.header.Access-Control-Allow-Origin: true
+          ResponseModels:
+            application/json: "Empty"
+
+  # POST Method for /applications
+  ApplicationsPostMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      HttpMethod: POST
+      ResourceId: !Ref ApplicationsResource
+      RestApiId: !Ref ApplicationApi
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${CreateApplicationFunction.Arn}/invocations"
+        IntegrationResponses:
+          - StatusCode: 200
+      MethodResponses:
+        - StatusCode: 200
+
+  # GET Method for /applications
+  ApplicationsGetMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      HttpMethod: GET
+      ResourceId: !Ref ApplicationsResource
+      RestApiId: !Ref ApplicationApi
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${GetApplicationsFunction.Arn}/invocations"
+        IntegrationResponses:
+          - StatusCode: 200
+      MethodResponses:
+        - StatusCode: 200
+
+  # Resource for /applications/{applicationId}
+  ApplicationIdResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      ParentId: !Ref ApplicationsResource
+      PathPart: "{applicationId}"
+      RestApiId: !Ref ApplicationApi
+
+  # DELETE Method for /applications/{applicationId}
+  ApplicationDeleteMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      HttpMethod: DELETE
+      ResourceId: !Ref ApplicationIdResource
+      RestApiId: !Ref ApplicationApi
+      RequestParameters:
+        "method.request.path.applicationId": true
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${DeleteApplicationFunction.Arn}/invocations"
+        IntegrationResponses:
+          - StatusCode: 200
+      MethodResponses:
+        - StatusCode: 200
+
+  # PUT Method for /applications/{applicationId}
+  ApplicationPutMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      HttpMethod: PUT
+      ResourceId: !Ref ApplicationIdResource
+      RestApiId: !Ref ApplicationApi
+      RequestParameters:
+        "method.request.path.applicationId": true
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${UpdateApplicationFunction.Arn}/invocations"
+        IntegrationResponses:
+          - StatusCode: 200
+      MethodResponses:
+        - StatusCode: 200
+
+  # Lambda Permission for API Gateway Invocation for Delete
+  LambdaApiGatewayPermissionDelete:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt DeleteApplicationFunction.Arn
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApplicationApi}/*/DELETE/applications/{applicationId}"
+
+  # Lambda Permission for API Gateway Invocation for Update
+  LambdaApiGatewayPermissionUpdate:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt UpdateApplicationFunction.Arn
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApplicationApi}/*/PUT/applications/{applicationId}"
+
+  # Lambda Permission for API Gateway Invocation for GET
+  LambdaApiGatewayPermissionGet:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt GetApplicationsFunction.Arn
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApplicationApi}/*/GET/applications
+
+  # Lambda Permission for API Gateway Invocation
+  LambdaApiGatewayPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt CreateApplicationFunction.Arn
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ApplicationApi}/*/POST/applications
+
+  # API Gateway Deployment
+  ApplicationApiDeployment:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn:
+      - ApplicationsPostMethod
+      - ApplicationsGetMethod
+      - ApplicationDeleteMethod
+      - ApplicationPutMethod
+    Properties:
+      RestApiId: !Ref ApplicationApi
+      StageName: prod
+
+  # Document API Gateway
+  DocumentApi:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: DocumentApi
+      Description: API for document management
+
+  # API Gateway Resource for /upload
+  UploadResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      ParentId: !GetAtt DocumentApi.RootResourceId
+      PathPart: "upload"
+      RestApiId: !Ref DocumentApi
+
+  # OPTIONS Method for /upload (CORS Configuration)
+  UploadOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      HttpMethod: OPTIONS
+      ResourceId: !Ref UploadResource
+      RestApiId: !Ref DocumentApi
+      Integration:
+        Type: MOCK
+        IntegrationResponses:
+          - StatusCode: 200
+            ResponseParameters:
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+              method.response.header.Access-Control-Allow-Methods: "'POST,GET,OPTIONS'"
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+            ResponseTemplates:
+              application/json: ""
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        PassthroughBehavior: WHEN_NO_MATCH
+      MethodResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: true
+            method.response.header.Access-Control-Allow-Methods: true
+            method.response.header.Access-Control-Allow-Origin: true
+          ResponseModels:
+            application/json: "Empty"
+
+  # POST Method for /upload
+  UploadDocumentMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      HttpMethod: POST
+      ResourceId: !Ref UploadResource
+      RestApiId: !Ref DocumentApi
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${UploadDocumentFunction.Arn}/invocations"
+        IntegrationResponses:
+          - StatusCode: 200
+      MethodResponses:
+        - StatusCode: 200
+
+  # API Gateway Resource for /list
+  ListResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      ParentId: !GetAtt DocumentApi.RootResourceId
+      PathPart: "list"
+      RestApiId: !Ref DocumentApi
+
+  # OPTIONS Method for /list (CORS Configuration)
+  ListOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      HttpMethod: OPTIONS
+      ResourceId: !Ref ListResource
+      RestApiId: !Ref DocumentApi
+      Integration:
+        Type: MOCK
+        IntegrationResponses:
+          - StatusCode: 200
+            ResponseParameters:
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+              method.response.header.Access-Control-Allow-Methods: "'POST,GET,OPTIONS'"
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+            ResponseTemplates:
+              application/json: ""
+        RequestTemplates:
+          application/json: '{"statusCode": 200}'
+        PassthroughBehavior: WHEN_NO_MATCH
+      MethodResponses:
+        - StatusCode: 200
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: true
+            method.response.header.Access-Control-Allow-Methods: true
+            method.response.header.Access-Control-Allow-Origin: true
+          ResponseModels:
+            application/json: "Empty"
+
+  # GET Method for /list
+  ListDocumentMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      HttpMethod: GET
+      ResourceId: !Ref ListResource
+      RestApiId: !Ref DocumentApi
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ListDocumentFunction.Arn}/invocations"
+        IntegrationResponses:
+          - StatusCode: 200
+      MethodResponses:
+        - StatusCode: 200
+
+  # Lambda Permissions for API Gateway Invocation (Upload and List)
+  LambdaApiGatewayPermissionUpload:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt UploadDocumentFunction.Arn
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${DocumentApi}/*/POST/upload
+
+  LambdaApiGatewayPermissionList:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt ListDocumentFunction.Arn
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${DocumentApi}/*/GET/list
+
+  # Document API Gateway Deployment
+  DocumentApiDeployment:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn:
+      - UploadDocumentMethod
+      - ListDocumentMethod
+      - UploadOptionsMethod
+      - ListOptionsMethod
+    Properties:
+      RestApiId: !Ref DocumentApi
+      StageName: prod
+
+  # EC2 Instance for Frontend
+  FrontendEC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: ami-0230bd60aa48260c6
+      InstanceType: t2.small
+      KeyName: !Ref MyKeyPair
+      SecurityGroupIds:
+        - !Ref SecurityGroupCustom
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          sudo su
+          yum install git -y
+          git clone https://github.com/GauravsinhSolanki/JobTracker1.git
+          cd JobTracker1/
+          rm .env
+          echo "REACT_APP_API_URL_BASE=https://${ApplicationApi}.execute-api.${AWS::Region}.amazonaws.com/prod" > .env
+          echo "REACT_APP_DOCUMENT_BASE=https://${DocumentApi}.execute-api.${AWS::Region}.amazonaws.com/prod" >> .env
+          yum install nodejs -y
+          yum install npm -y
+          npm install
+          npm run build
+          npm run start&
+
+  SecurityGroupCustom:
+    Type: "AWS::EC2::SecurityGroup"
+    Properties:
+      GroupDescription: "Custom Security Group for application-specific access"
+      SecurityGroupIngress:
+        - IpProtocol: "tcp"
+          FromPort: "3000"
+          ToPort: "3000"
+          CidrIp: "0.0.0.0/0"
+
+  # Key Pair
+  MyKeyPair:
+    Type: "AWS::EC2::KeyPair"
+    Properties:
+      KeyName: "jobtracker-key"
+
+Outputs:
+  # Outputs for API Gateway and other resources
+  ApplicationApiEndpoint:
+    Description: "Endpoint for Job Tracker API"
+    Value: !Sub "https://${ApplicationApi}.execute-api.${AWS::Region}.amazonaws.com/prod"
+  DocumentApiEnpoint:
+    Description: "Endpoint for Document API"
+    Value: !Sub "https://${DocumentApi}.execute-api.${AWS::Region}.amazonaws.com/prod"
+  FrontendInstancePublicIP:
+    Description: "Public IP of the Frontend EC2 Instance"
+    Value: !GetAtt FrontendEC2Instance.PublicIp

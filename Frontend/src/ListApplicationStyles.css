@@ -1,0 +1,113 @@
+/* General page styling */
+body {
+    background-color: #f4f4f4;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    color: #333333;
+    margin: 0;
+    padding: 0;
+}
+
+/* Container for the applications list */
+.list-applications-container {
+    max-width: 95%;
+    margin: 30px auto;
+    background-color: #ffffff;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    padding: 20px;
+    border-radius: 8px;
+}
+
+/* Table styles */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+    margin-top: 15px;
+}
+
+th,
+td {
+    padding: 12px 15px;
+    border-bottom: 1px solid #dddddd;
+}
+
+th {
+    background-color: #eeeeee;
+    color: #333333;
+    font-weight: bold;
+}
+
+td {
+    color: #666666;
+}
+
+/* Links styling */
+a {
+    color: #2a7dd2;
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+/* Buttons styling */
+button {
+    padding: 8px 15px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+button:hover {
+    opacity: 0.9;
+}
+
+/* Delete button */
+.delete-button {
+    background-color: #d9534f;
+    color: white;
+}
+
+/* Loading and Error messages */
+.loading,
+.error {
+    text-align: center;
+    padding: 20px;
+}
+
+.edit-button {
+    background-color: #ffa500;
+    /* Vibrant orange color */
+    color: white;
+    padding: 8px 12px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: background-color 0.3s, transform 0.2s;
+    margin-right: 5px;
+    /* Spacing between edit and delete button */
+}
+
+.edit-button:hover,
+.edit-button:focus {
+    background-color: #ff8c00;
+    /* Slightly darker shade for hover */
+    outline: none;
+    transform: scale(1.05);
+    /* Slight increase in size */
+}
+
+.edit-button:active {
+    transform: scale(0.95);
+    /* Subtle click effect */
+}
+
+/* Optional: Adding an icon to the button */
+.edit-button:before {
+    content: '✎';
+    /* Pencil icon */
+    margin-right: 5px;
+}
